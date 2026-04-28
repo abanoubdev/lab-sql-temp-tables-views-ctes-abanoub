@@ -1,15 +1,22 @@
 USE SAKILA;
 
 -- 1.
-CREATE VIEW customer_rental_summary AS
+CREATE OR REPLACE VIEW customer_rental_summary AS
+WITH customer_full_name AS (
+    SELECT 
+        customer_id,
+        CONCAT(first_name, ' ', last_name) AS customer_name,
+        email
+    FROM customer
+)
 SELECT 
-    c.customer_id,
-    CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
-    c.email,
-    COUNT(r.rental_id) AS rental_count
-FROM customer c
-JOIN rental r ON c.customer_id = r.customer_id
-GROUP BY c.customer_id;
+    cfn.customer_id,
+    cfn.customer_name,
+    cfn.email,
+    COUNT(rental.rental_id) AS rental_count
+FROM customer_full_name cfn
+JOIN rental ON cfn.customer_id = rental.customer_id
+GROUP BY cfn.customer_id, cfn.customer_name, cfn.email;
 
 -- 2.
 CREATE TEMPORARY TABLE customer_payment_summary AS
@@ -22,7 +29,7 @@ GROUP BY crs.customer_id;
 
 -- 3.
 
-WITH customer_summary AS (
+WITH final_report_cte AS (
     SELECT 
         crs.customer_name,
         crs.email,
@@ -37,5 +44,5 @@ SELECT
     rental_count,
     total_paid,
     ROUND(total_paid / rental_count, 2) AS average_payment_per_rental
-FROM customer_summary
+FROM final_report_cte
 ORDER BY total_paid DESC;
